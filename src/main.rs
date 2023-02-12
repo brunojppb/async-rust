@@ -35,7 +35,12 @@ impl ArcWake for Task {
         let cloned = arc_self.clone();
         arc_self
             .task_sender
-            .send(cloned)
+            // Using `send` instead would potentially lead us to a deadlock
+            // where the queue is full, the executor can't process any more tasks
+            // and `send` will be waiting forever here for the queue to allocate
+            // space in the channel buffer.
+            // Using `try_send`
+            .try_send(cloned)
             .expect("Too many tasks queued");
     }
 }
@@ -78,7 +83,9 @@ impl Spawner {
             future: Mutex::new(Some(future)),
             task_sender: self.task_sender.clone(),
         });
-        self.task_sender.send(task).expect("Too many tasks queued");
+        self.task_sender
+            .try_send(task)
+            .expect("Too many tasks queued");
     }
 }
 
