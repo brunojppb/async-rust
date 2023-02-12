@@ -92,9 +92,11 @@ fn main() {
     let (executor, spanwer) = new_executor_and_spanwer();
 
     spanwer.spawn(async {
-        println!("Kicking task off...");
-        TimerFuture::new(Duration::new(2, 0)).await;
-        println!("TimerFuture done!");
+        TimerFuture::new("heavy_stuff", Duration::new(2, 0)).await;
+    });
+
+    spanwer.spawn(async {
+        TimerFuture::new("slow_socket", Duration::new(2, 0)).await;
     });
 
     drop(spanwer);

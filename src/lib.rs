@@ -39,7 +39,7 @@ impl Future for TimerFuture {
 }
 
 impl TimerFuture {
-    pub fn new(duration: Duration) -> Self {
+    pub fn new(id: &str, duration: Duration) -> Self {
         let shared_state = Arc::new(Mutex::new(SharedState {
             completed: false,
             waker: None,
@@ -48,15 +48,19 @@ impl TimerFuture {
         // Make a copy of the shared state pointer so we can move
         // its reference to the thread scope which will own it.
         let thread_shared_state = shared_state.clone();
+        let thread_id = String::from(id);
         thread::spawn(move || {
             let mut time_spent = duration.clone();
             loop {
-                println!("🏋🏽 Doing something heavy on a thread...");
+                println!("Task: {thread_id}: 🏋🏽 Doing something heavy on a thread...");
                 thread::sleep(duration);
                 let mut rng = rand::prelude::thread_rng();
                 let is_done = rng.gen_bool(1.0 / 5.0);
                 if is_done {
-                    println!("✅ Done doing something heavy. took {:?}", &time_spent);
+                    println!(
+                        "Task: {thread_id}: ✅ Done doing something heavy. took {:?}",
+                        &time_spent
+                    );
                     let mut shared_state = thread_shared_state.lock().unwrap();
                     shared_state.completed = true;
                     if let Some(waker) = shared_state.waker.take() {
@@ -64,7 +68,7 @@ impl TimerFuture {
                         break;
                     }
                 } else {
-                    println!("😴 Still not done. Work will continue later...");
+                    println!("Task: {thread_id}: 😴 Still not done. Work will continue later...");
                     time_spent += duration;
                 }
             }
