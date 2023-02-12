@@ -7,6 +7,8 @@ use std::{
     time::Duration,
 };
 
+use rand::Rng;
+
 pub struct TimerFuture {
     shared_state: Arc<Mutex<SharedState>>,
 }
@@ -47,13 +49,24 @@ impl TimerFuture {
         // its reference to the thread scope which will own it.
         let thread_shared_state = shared_state.clone();
         thread::spawn(move || {
-            println!("🏋🏽 Doing something heavy on a thread...");
-            thread::sleep(duration);
-            println!("✅ Done doing something heavy. took {:?}", duration);
-            let mut shared_state = thread_shared_state.lock().unwrap();
-            shared_state.completed = true;
-            if let Some(waker) = shared_state.waker.take() {
-                waker.wake()
+            let mut time_spent = duration.clone();
+            loop {
+                println!("🏋🏽 Doing something heavy on a thread...");
+                thread::sleep(duration);
+                let mut rng = rand::prelude::thread_rng();
+                let is_done = rng.gen_bool(1.0 / 5.0);
+                if is_done {
+                    println!("✅ Done doing something heavy. took {:?}", &time_spent);
+                    let mut shared_state = thread_shared_state.lock().unwrap();
+                    shared_state.completed = true;
+                    if let Some(waker) = shared_state.waker.take() {
+                        waker.wake();
+                        break;
+                    }
+                } else {
+                    println!("😴 Still not done. Work will continue later...");
+                    time_spent += duration;
+                }
             }
         });
 
